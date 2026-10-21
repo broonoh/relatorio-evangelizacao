@@ -292,7 +292,10 @@
         <i data-lucide="baby" class="w-4 h-4 inline mr-1"></i> Crianças e Adolescentes
       </button>
       <button onclick="switchTab('novo')" data-tab="novo" class="tab-btn px-5 py-2.5 rounded-xl font-semibold text-sm text-slate-600 hover:bg-slate-100 transition-all">
-        <i data-lucide="user-plus-2" class="w-4 h-4 inline mr-1"></i> Novo Visitante
+        <i data-lucide="user-plus-2" class="w-4 h-4 inline mr-1"></i> Novo Cadastro
+      </button>
+      <button onclick="switchTab('culto')" data-tab="culto" class="tab-btn px-5 py-2.5 rounded-xl font-semibold text-sm text-slate-600 hover:bg-slate-100 transition-all">
+        <i data-lucide="door-open" class="w-4 h-4 inline mr-1"></i> Visitante do Culto
       </button>
       <button onclick="switchTab('relatorio')" data-tab="relatorio" class="tab-btn px-5 py-2.5 rounded-xl font-semibold text-sm text-slate-600 hover:bg-slate-100 transition-all">
         <i data-lucide="file-text" class="w-4 h-4 inline mr-1"></i> Relatório
@@ -345,8 +348,8 @@
       <div id="tab-novo" class="tab-content hidden">
         <div class="max-w-2xl mx-auto">
           <div class="mb-6">
-            <h3 class="font-display text-lg font-bold text-slate-800">Cadastrar Novo Visitante</h3>
-            <p class="text-sm text-slate-500">Adicione um novo visitante à listagem</p>
+            <h3 class="font-display text-lg font-bold text-slate-800">Novo Cadastro</h3>
+            <p class="text-sm text-slate-500">Adicione um novo membro ou visitante à listagem</p>
           </div>
           <form id="formNovoVisitante" class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -393,12 +396,64 @@
               <select id="novoSituacao" class="input-field">
                 <option value="Visitante">Visitante</option>
                 <option value="Visitante Frequente">Visitante Frequente</option>
+                <option value="Membro">Membro</option>
+                <option value="Membro não batizado">Membro não batizado</option>
               </select>
             </div>
             <div class="flex gap-3 pt-4">
               <button type="submit" class="btn-success text-white px-6 py-3 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-md">
                 <i data-lucide="save" class="w-4 h-4"></i>
-                Cadastrar Visitante
+                Cadastrar
+              </button>
+              <button type="reset" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-semibold text-sm transition-all">
+                Limpar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div id="tab-culto" class="tab-content hidden">
+        <div class="max-w-2xl mx-auto">
+          <div class="mb-6">
+            <h3 class="font-display text-lg font-bold text-slate-800">Visitante do Culto</h3>
+            <p class="text-sm text-slate-500">Cadastro rápido durante o evento — a pessoa já é marcada como presente no evento atual</p>
+          </div>
+          <form id="formVisitanteCulto" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Nome Completo</label>
+                <input type="text" id="cultoNome" class="input-field">
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Telefone</label>
+                <input type="tel" id="cultoTelefone" class="input-field" placeholder="(00) 00000-0000">
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Sexo</label>
+                <select id="cultoSexo" class="input-field">
+                  <option value="">Selecione...</option>
+                  <option value="M">Masculino</option>
+                  <option value="F">Feminino</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Categoria</label>
+                <select id="cultoCategoria" class="input-field">
+                  <option value="">Selecione...</option>
+                  <option value="Adulto">Adulto</option>
+                  <option value="Jovem">Jovem</option>
+                  <option value="Adolescente">Adolescente</option>
+                  <option value="Criança(Intermediário) 7-11">Criança (Intermediário) 7-11</option>
+                  <option value="Criança(Pequeno) 3-7">Criança (Pequeno) 3-7</option>
+                  <option value="Criança(Berçário) 0-3">Criança (Berçário) 0-3</option>
+                </select>
+              </div>
+            </div>
+            <div class="flex gap-3 pt-4">
+              <button type="submit" class="btn-success text-white px-6 py-3 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-md">
+                <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                Cadastrar e Marcar Presença
               </button>
               <button type="reset" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-semibold text-sm transition-all">
                 Limpar
@@ -516,6 +571,73 @@
       <div class="flex gap-2 pt-2">
         <button type="submit" class="btn-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm flex-1">Criar Evento</button>
         <button type="button" onclick="closeEventModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-semibold text-sm">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- EDITAR PESSOA MODAL -->
+<div id="editPessoaModal" class="modal-overlay hidden">
+  <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display text-lg font-bold text-slate-800">Editar Cadastro</h3>
+      <button onclick="closeEditModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+    <form id="formEditarPessoa" class="space-y-4">
+      <input type="hidden" id="editId">
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Nome Completo</label>
+        <input type="text" id="editNome" class="input-field">
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Telefone</label>
+        <input type="tel" id="editTelefone" class="input-field" placeholder="(00) 00000-0000">
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-2">Sexo</label>
+          <select id="editSexo" class="input-field">
+            <option value="">Selecione...</option>
+            <option value="M">Masculino</option>
+            <option value="F">Feminino</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-2">Grupo</label>
+          <select id="editGrupo" class="input-field">
+            <option value="">Sem grupo</option>
+            <option value="Grupo 1">Grupo 1</option>
+            <option value="Grupo 2">Grupo 2</option>
+            <option value="Grupo 3">Grupo 3</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Categoria</label>
+        <select id="editCategoria" class="input-field">
+          <option value="">Selecione...</option>
+          <option value="Adulto">Adulto</option>
+          <option value="Jovem">Jovem</option>
+          <option value="Adolescente">Adolescente</option>
+          <option value="Criança(Intermediário) 7-11">Criança (Intermediário) 7-11</option>
+          <option value="Criança(Pequeno) 3-7">Criança (Pequeno) 3-7</option>
+          <option value="Criança(Berçário) 0-3">Criança (Berçário) 0-3</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Situação</label>
+        <select id="editSituacao" class="input-field">
+          <option value="Membro">Membro</option>
+          <option value="Membro não batizado">Membro não batizado</option>
+          <option value="Visitante">Visitante</option>
+          <option value="Visitante Frequente">Visitante Frequente</option>
+        </select>
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button type="submit" class="btn-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm flex-1">Salvar Alterações</button>
+        <button type="button" onclick="closeEditModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-semibold text-sm">Cancelar</button>
       </div>
     </form>
   </div>
@@ -726,6 +848,11 @@ async function salvarPessoaFirestore(p) {
   await db.collection('pessoas').doc(String(p.id)).set(p);
 }
 
+async function excluirPessoaFirestore(id) {
+  if (!useFirebase) return;
+  await db.collection('pessoas').doc(String(id)).delete();
+}
+
 async function salvarEventoFirestore(e) {
   if (!useFirebase) return;
   if (e.id) {
@@ -804,6 +931,54 @@ function isPresente(pessoaId) {
   return eventoAtual && presencas[eventoAtual] && presencas[eventoAtual][pessoaId];
 }
 
+// ============ EDITAR / EXCLUIR PESSOA ============
+function abrirEdicaoPessoa(id) {
+  const p = pessoas.find(p => p.id === id);
+  if (!p) return;
+  document.getElementById('editId').value = p.id;
+  document.getElementById('editNome').value = p.nome || '';
+  document.getElementById('editTelefone').value = p.telefone || '';
+  document.getElementById('editSexo').value = p.sexo || '';
+  document.getElementById('editGrupo').value = p.grupo || '';
+  document.getElementById('editCategoria').value = p.categoria || '';
+  document.getElementById('editSituacao').value = p.situacao || 'Visitante';
+  document.getElementById('editPessoaModal').classList.remove('hidden');
+}
+
+function closeEditModal() {
+  document.getElementById('editPessoaModal').classList.add('hidden');
+  document.getElementById('formEditarPessoa').reset();
+}
+
+document.getElementById('formEditarPessoa').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = parseInt(document.getElementById('editId').value);
+  const p = pessoas.find(p => p.id === id);
+  if (!p) return;
+  p.nome = document.getElementById('editNome').value.toUpperCase();
+  p.telefone = document.getElementById('editTelefone').value;
+  p.sexo = document.getElementById('editSexo').value;
+  p.grupo = document.getElementById('editGrupo').value;
+  p.categoria = document.getElementById('editCategoria').value;
+  p.situacao = document.getElementById('editSituacao').value;
+  if (useFirebase) await salvarPessoaFirestore(p);
+  else salvarLocal();
+  closeEditModal();
+  renderAll();
+  showToast('Cadastro atualizado!');
+});
+
+async function excluirPessoa(id) {
+  const p = pessoas.find(p => p.id === id);
+  if (!p) return;
+  if (!confirm(`Excluir "${p.nome}" permanentemente? Essa ação não pode ser desfeita.`)) return;
+  pessoas = pessoas.filter(p => p.id !== id);
+  if (useFirebase) await excluirPessoaFirestore(id);
+  else salvarLocal();
+  renderAll();
+  showToast('Cadastro excluído!');
+}
+
 // ============ NOVO VISITANTE ============
 document.getElementById('formNovoVisitante').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -823,6 +998,38 @@ document.getElementById('formNovoVisitante').addEventListener('submit', async (e
   document.getElementById('formNovoVisitante').reset();
   renderAll();
   showToast('Visitante cadastrado!');
+});
+
+// ============ VISITANTE DO CULTO ============
+document.getElementById('formVisitanteCulto').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!eventoAtual) {
+    showToast('Selecione um evento primeiro!', 'error');
+    return;
+  }
+  const novoId = Math.max(...pessoas.map(p => p.id), 0) + 1;
+  const novaPessoa = {
+    id: novoId,
+    nome: document.getElementById('cultoNome').value.toUpperCase(),
+    telefone: document.getElementById('cultoTelefone').value,
+    sexo: document.getElementById('cultoSexo').value,
+    categoria: document.getElementById('cultoCategoria').value,
+    grupo: '',
+    situacao: 'Visitante',
+    origemCulto: true
+  };
+  pessoas.push(novaPessoa);
+  if (!presencas[eventoAtual]) presencas[eventoAtual] = {};
+  presencas[eventoAtual][novoId] = true;
+  if (useFirebase) {
+    await salvarPessoaFirestore(novaPessoa);
+    await salvarPresencaFirestore();
+  } else {
+    salvarLocal();
+  }
+  document.getElementById('formVisitanteCulto').reset();
+  renderAll();
+  showToast('Visitante cadastrado e marcado como presente!');
 });
 
 // ============ IMPORTAR PLANILHA ============
@@ -1010,6 +1217,14 @@ function cardPessoa(p) {
           ${p.sexo}
         </div>
       </div>
+      <div class="flex items-center gap-1">
+        <button onclick="abrirEdicaoPessoa(${p.id})" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center" title="Editar">
+          <i data-lucide="pencil" class="w-3.5 h-3.5 text-slate-500"></i>
+        </button>
+        <button onclick="excluirPessoa(${p.id})" class="w-8 h-8 rounded-lg hover:bg-red-50 flex items-center justify-center" title="Excluir">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5 text-red-500"></i>
+        </button>
+      </div>
     </div>
   `;
 }
@@ -1110,7 +1325,7 @@ function buildReportHTML() {
           ${lista.map((p, i) => `
             <tr>
               <td style="color:#94a3b8;font-weight:600;">${i+1}</td>
-              <td style="font-weight:600;">${p.nome}</td>
+              <td style="font-weight:600;">${p.nome}${p.origemCulto ? ' <span style="font-size:10px;font-weight:700;color:#8b5cf6;background:#f5f3ff;padding:2px 6px;border-radius:999px;margin-left:4px;">VISITANTE DO CULTO</span>' : ''}</td>
               <td>${p.situacao}</td>
               <td>${p.categoria}</td>
               <td>${p.grupo || '-'}</td>
