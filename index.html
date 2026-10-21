@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Igreja Hinterland - Controle de Presença</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.8/index.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/plus-jakarta-sans@5.0.3/index.css">
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<style>
+  :root {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --accent: #10b981;
+    --bg-soft: #f8fafc;
+  }
+  * { font-family: 'Inter', sans-serif; }
+  h1, h2, h3, .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
+  body {
+    background: linear-gradient(135deg, #f5f3ff 0%, #eff6ff 50%, #f0fdf4 100%);
+    min-height: 100vh;
+  }
+  .glass {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+  }
+  .card-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+  .card-hover:hover { transform: translateY(-2px); box-shadow: 0 20px 40px -15px rgba(99, 102, 241, 0.2); }
+  .btn-primary {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    transition: all 0.3s ease;
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.5); }
+  .btn-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    transition: all 0.3s ease;
+  }
+  .btn-success:hover { transform: translateY(-1px); box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.5); }
+  .checkbox-custom {
+    width: 24px; height: 24px;
+    border: 2px solid #cbd5e1;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .checkbox-custom.checked {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border-color: #10b981;
+  }
+  .checkbox-custom.checked::after {
+    content: '✓';
+    color: white;
+    font-weight: bold;
+    font-size: 16px;
+  }
+  .tab-active {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: white;
+    box-shadow: 0 8px 20px -5px rgba(99, 102, 241, 0.4);
+  }
+  .fade-in { animation: fadeIn 0.4s ease-out; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .badge {
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+  .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  
+  /* Report styles */
+  .report-container {
+    background: white;
+    padding: 40px;
+    max-width: 900px;
+    margin: 0 auto;
+    color: #1e293b;
+  }
+  .report-header {
+    border-bottom: 3px solid #6366f1;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+  }
+  .report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .report-table th {
+    background: #6366f1;
+    color: white;
+    padding: 10px;
+    text-align: left;
+    font-weight: 600;
+  }
+  .report-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .report-table tr:nth-child(even) { background: #f8fafc; }
+  .report-table .present { color: #10b981; font-weight: 600; }
+  .report-table .absent { color: #ef4444; font-weight: 600; }
+
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    animation: fadeIn 0.2s ease-out;
+  }
+  .input-field {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    background: white;
+  }
+  .input-field:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+  }
+  .stat-card {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+  }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="glass sticky top-0 z-40 border-b border-slate-200/50">
+  <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+        <i data-lucide="church" class="w-6 h-6 text-white"></i>
+      </div>
+      <div>
+        <h1 class="font-display text-xl font-bold text-slate-800">Igreja Hinterland</h1>
+        <p class="text-xs text-slate-500">Controle de Presença</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <div id="firebaseStatus" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-xs font-medium text-slate-600">
+        <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+        Configurando...
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main class="max-w-7xl mx-auto px-6 py-8">
+
+  <!-- EVENT SELECTOR -->
+  <section class="mb-8 fade-in">
+    <div class="glass rounded-2xl p-6 shadow-sm border border-slate-200/50">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
+            <i data-lucide="calendar-event" class="w-6 h-6 text-white"></i>
+          </div>
+          <div>
+            <h2 class="font-display text-lg font-bold text-slate-800">Evento Atual</h2>
+            <p id="currentEventName" class="text-sm text-slate-500">Nenhum evento selecionado</p>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <select id="eventSelect" class="input-field max-w-xs">
+            <option value="">Selecione um evento...</option>
+          </select>
+          <button onclick="openEventModal()" class="btn-primary text-white px-5 py-3 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-md">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            Novo Evento
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section id="statsSection" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8 fade-in">
+    <div class="stat-card">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Membros</span>
+        <div class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+          <i data-lucide="users" class="w-4 h-4 text-indigo-600"></i>
+        </div>
+      </div>
+      <p id="statMembros" class="font-display text-3xl font-bold text-slate-800">0</p>
+      <p id="statMembrosPresentes" class="text-xs text-slate-500 mt-1">0 presentes</p>
+    </div>
+    <div class="stat-card">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Visitantes</span>
+        <div class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+          <i data-lucide="user-plus" class="w-4 h-4 text-emerald-600"></i>
+        </div>
+      </div>
+      <p id="statVisitantes" class="font-display text-3xl font-bold text-slate-800">0</p>
+      <p id="statVisitantesPresentes" class="text-xs text-slate-500 mt-1">0 presentes</p>
+    </div>
+    <div class="stat-card">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Crianças/Adolescentes</span>
+        <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center">
+          <i data-lucide="baby" class="w-4 h-4 text-pink-600"></i>
+        </div>
+      </div>
+      <p id="statCriancas" class="font-display text-3xl font-bold text-slate-800">0</p>
+      <p id="statCriancasPresentes" class="text-xs text-slate-500 mt-1">0 presentes</p>
+    </div>
+    <div class="stat-card">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Presentes</span>
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+          <i data-lucide="check-circle-2" class="w-4 h-4 text-white"></i>
+        </div>
+      </div>
+      <p id="statTotal" class="font-display text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">0</p>
+      <p id="statPercent" class="text-xs text-slate-500 mt-1">0% de presença</p>
+    </div>
+  </section>
+
+  <!-- TABS -->
+  <section class="glass rounded-2xl shadow-sm border border-slate-200/50 overflow-hidden fade-in">
+    <div class="flex flex-wrap gap-2 p-4 border-b border-slate-200/50 bg-slate-50/50">
+      <button onclick="switchTab('membros')" data-tab="membros" class="tab-btn tab-active px-5 py-2.5 rounded-xl font-semibold text-sm transition-all">
+        <i data-lucide="users" class="w-4 h-4 inline mr-1"></i> Membros
+      </button>
+      <button onclick="switchTab('visitantes')" data-tab="visitantes" class="tab-btn px-5 py-2.5 rounded-xl font-semibold text-sm text-slate-600 hover:bg-slate-100 transition-all">
+        <i data-lucide="user-plus" class="w-4 h-4 inline mr-1"></i> Visitantes
+      </button>
+      <button onclick="switchTab('criancas')" data-tab="criancas" class="tab-btn px-5 py-2.5 rounded-xl font-semibold text-sm text-slate-600 hover:bg-slate-100 transition-all">
+        <i data-lucide="baby" class="w-4 h-4 inline mr-1"></i> Crianças e Adolescentes
+      </button>
+      <button onclick="switchTab('novo')" data-tab="novo" class="tab-btn px-5 py-2.5 rounded-xl font-semibold text-sm text-slate-600 hover:bg-slate-100 transition-all">
+        <i data-lucide="user-plus-2" class="w-4 h-4 inline mr-1"></i> Novo Visitante
+      </button>
+      <button onclick="switchTab('relatorio')" data-tab="relatorio" class="tab-btn px-5 py-2.5 rounded-xl font-semibold text-sm text-slate-600 hover:bg-slate-100 transition-all">
+        <i data-lucide="file-text" class="w-4 h-4 inline mr-1"></i> Relatório
+      </button>
+    </div>
+
+    <!-- TAB CONTENT -->
+    <div class="p-6">
+      <div id="tab-membros" class="tab-content">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+          <div>
+            <h3 class="font-display text-lg font-bold text-slate-800">Membros Adultos e Jovens</h3>
+            <p class="text-sm text-slate-500">Confirme a presença dos membros</p>
+          </div>
+          <div class="flex gap-2">
+            <input id="searchMembros" type="text" placeholder="Buscar..." class="input-field max-w-xs" oninput="renderList()">
+            <select id="filterGrupoMembros" class="input-field max-w-[150px]" onchange="renderList()">
+              <option value="">Todos os grupos</option>
+              <option value="Grupo 1">Grupo 1</option>
+              <option value="Grupo 2">Grupo 2</option>
+              <option value="Grupo 3">Grupo 3</option>
+            </select>
+          </div>
+        </div>
+        <div id="listMembros" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+      </div>
+
+      <div id="tab-visitantes" class="tab-content hidden">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+          <div>
+            <h3 class="font-display text-lg font-bold text-slate-800">Visitantes Cadastrados</h3>
+            <p class="text-sm text-slate-500">Visitantes listados no sistema</p>
+          </div>
+          <input id="searchVisitantes" type="text" placeholder="Buscar..." class="input-field max-w-xs" oninput="renderList()">
+        </div>
+        <div id="listVisitantes" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+      </div>
+
+      <div id="tab-criancas" class="tab-content hidden">
+        <div class="mb-4">
+          <h3 class="font-display text-lg font-bold text-slate-800">Crianças e Adolescentes por Classe</h3>
+          <p class="text-sm text-slate-500">Organizados por faixa etária</p>
+        </div>
+        <div id="listCriancas"></div>
+      </div>
+
+      <div id="tab-novo" class="tab-content hidden">
+        <div class="max-w-2xl mx-auto">
+          <div class="mb-6">
+            <h3 class="font-display text-lg font-bold text-slate-800">Cadastrar Novo Visitante</h3>
+            <p class="text-sm text-slate-500">Adicione um novo visitante à listagem</p>
+          </div>
+          <form id="formNovoVisitante" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Nome Completo *</label>
+                <input type="text" id="novoNome" class="input-field" required>
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Sexo *</label>
+                <select id="novoSexo" class="input-field" required>
+                  <option value="">Selecione...</option>
+                  <option value="M">Masculino</option>
+                  <option value="F">Feminino</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Categoria *</label>
+                <select id="novoCategoria" class="input-field" required>
+                  <option value="">Selecione...</option>
+                  <option value="Adulto">Adulto</option>
+                  <option value="Jovem">Jovem</option>
+                  <option value="Adolescente">Adolescente</option>
+                  <option value="Criança(Intermediário) 7-11">Criança (Intermediário) 7-11</option>
+                  <option value="Criança(Pequeno) 3-7">Criança (Pequeno) 3-7</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Grupo de Assistência</label>
+                <select id="novoGrupo" class="input-field">
+                  <option value="">Sem grupo</option>
+                  <option value="Grupo 1">Grupo 1</option>
+                  <option value="Grupo 2">Grupo 2</option>
+                  <option value="Grupo 3">Grupo 3</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-2">Situação</label>
+              <select id="novoSituacao" class="input-field">
+                <option value="Visitante">Visitante</option>
+                <option value="Visitante Frequente">Visitante Frequente</option>
+              </select>
+            </div>
+            <div class="flex gap-3 pt-4">
+              <button type="submit" class="btn-success text-white px-6 py-3 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-md">
+                <i data-lucide="save" class="w-4 h-4"></i>
+                Cadastrar Visitante
+              </button>
+              <button type="reset" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-semibold text-sm transition-all">
+                Limpar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div id="tab-relatorio" class="tab-content hidden">
+        <div class="mb-6">
+          <h3 class="font-display text-lg font-bold text-slate-800">Gerar Relatório</h3>
+          <p class="text-sm text-slate-500">Escolha o formato e o conteúdo do relatório</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <label class="stat-card cursor-pointer hover:border-indigo-300">
+            <div class="flex items-start gap-3">
+              <input type="radio" name="formato" value="imagem" checked class="mt-1 w-4 h-4 accent-indigo-600">
+              <div class="flex-1">
+                <p class="font-semibold text-slate-800">Imagem (PNG)</p>
+                <p class="text-xs text-slate-500 mt-1">Gera uma imagem para compartilhar em redes sociais ou mensagens</p>
+              </div>
+            </div>
+          </label>
+          <label class="stat-card cursor-pointer hover:border-indigo-300">
+            <div class="flex items-start gap-3">
+              <input type="radio" name="formato" value="pdf" class="mt-1 w-4 h-4 accent-indigo-600">
+              <div class="flex-1">
+                <p class="font-semibold text-slate-800">Documento (PDF)</p>
+                <p class="text-xs text-slate-500 mt-1">Gera um PDF com tabela completa para impressão</p>
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <div class="mb-6">
+          <label class="block text-sm font-semibold text-slate-700 mb-2">Filtrar por</label>
+          <div class="flex flex-wrap gap-2">
+            <label class="px-4 py-2 rounded-lg bg-slate-100 cursor-pointer hover:bg-slate-200 text-sm font-medium">
+              <input type="checkbox" class="mr-2 accent-indigo-600" value="membros" checked> Membros
+            </label>
+            <label class="px-4 py-2 rounded-lg bg-slate-100 cursor-pointer hover:bg-slate-200 text-sm font-medium">
+              <input type="checkbox" class="mr-2 accent-indigo-600" value="visitantes" checked> Visitantes
+            </label>
+            <label class="px-4 py-2 rounded-lg bg-slate-100 cursor-pointer hover:bg-slate-200 text-sm font-medium">
+              <input type="checkbox" class="mr-2 accent-indigo-600" value="criancas" checked> Crianças/Adolescentes
+            </label>
+            <label class="px-4 py-2 rounded-lg bg-slate-100 cursor-pointer hover:bg-slate-200 text-sm font-medium">
+              <input type="checkbox" class="mr-2 accent-indigo-600" value="presentes"> Apenas presentes
+            </label>
+          </div>
+        </div>
+
+        <div class="flex gap-3">
+          <button onclick="gerarRelatorio()" class="btn-primary text-white px-6 py-3 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-md">
+            <i data-lucide="download" class="w-4 h-4"></i>
+            Gerar Relatório
+          </button>
+          <button onclick="previewRelatorio()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-semibold text-sm flex items-center gap-2 transition-all">
+            <i data-lucide="eye" class="w-4 h-4"></i>
+            Visualizar
+          </button>
+        </div>
+
+        <div id="previewArea" class="mt-6 hidden">
+          <div id="reportPreview"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- EVENT MODAL -->
+<div id="eventModal" class="modal-overlay hidden">
+  <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display text-lg font-bold text-slate-800">Novo Evento</h3>
+      <button onclick="closeEventModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+    <form id="formEvento" class="space-y-4">
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Nome do Evento *</label>
+        <input type="text" id="eventoNome" class="input-field" placeholder="Ex: Culto de Domingo" required>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Data *</label>
+        <input type="date" id="eventoData" class="input-field" required>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Descrição (opcional)</label>
+        <textarea id="eventoDesc" class="input-field" rows="3" placeholder="Detalhes do evento..."></textarea>
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button type="submit" class="btn-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm flex-1">Criar Evento</button>
+        <button type="button" onclick="closeEventModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-semibold text-sm">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="fixed bottom-6 right-6 z-50 hidden">
+  <div class="glass rounded-xl shadow-2xl border border-slate-200/50 px-5 py-3 flex items-center gap-3">
+    <div id="toastIcon" class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+      <i data-lucide="check" class="w-4 h-4 text-emerald-600"></i>
+    </div>
+    <p id="toastMsg" class="text-sm font-medium text-slate-700"></p>
+  </div>
+</div>
+
+<script>
+// ============ CONFIGURAÇÃO FIREBASE ============
+// IMPORTANTE: Substitua pelas suas credenciais do Firebase
+const firebaseConfig = {
+  apiKey: "SUA_API_KEY",
+  authDomain: "SEU_PROJETO.firebaseapp.com",
+  projectId: "SEU_PROJETO",
+  storageBucket: "SEU_PROJETO.appspot.com",
+  messagingSenderId: "SEU_SENDER_ID",
+  appId: "SEU_APP_ID"
+};
+
+let db = null;
+let useFirebase = false;
+
+// ============ DADOS INICIAIS (do PDF) ============
+const dadosIniciais = [
+  {id:1,nome:"ALEXANDRE PIRES DOS REIS",situacao:"Membro",grupo:"Grupo 3",categoria:"Adulto",sexo:"M"},
+  {id:2,nome:"ANA JÚLIA SOUSA SANT'ANNA",situacao:"Visitante",grupo:"Grupo 1",categoria:"Criança(Intermediário) 7-11",sexo:"F"},
+  {id:3,nome:"ANGELA MARIA DOS REIS",situacao:"Membro",grupo:"Grupo 2",categoria:"Adulto",sexo:"F"},
+  {id:4,nome:"ARIOSVALDO ALVES DE MEDEIROS",situacao:"Membro",grupo:"Grupo 2",categoria:"Adulto",sexo:"M"},
+  {id:5,nome:"ARTHUR CANDEIA DA SILVA",situacao:"Membro não batizado",grupo:"Grupo 2",categoria:"Criança(Intermediário) 7-11",sexo:"M"},
+  {id:6,nome:"BENJAMIM FONTES DA SILVA",situacao:"Membro não batizado",grupo:"Grupo 3",categoria:"Adolescente",sexo:"M"},
+  {id:7,nome:"BRUNO DA CONCEIÇÃO DA SILVA",situacao:"Membro",grupo:"Grupo 2",categoria:"Adulto",sexo:"M"},
+  {id:8,nome:"CLÁUDIO BARBOSA DE ARAÚJO",situacao:"Membro",grupo:"Grupo 1",categoria:"Adulto",sexo:"M"},
+  {id:9,nome:"DANIEL CRUZ",situacao:"Membro",grupo:"Grupo 1",categoria:"Adulto",sexo:"M"},
+  {id:10,nome:"DAVI CANDEIA DA SILVA",situacao:"Membro",grupo:"Grupo 2",categoria:"Jovem",sexo:"M"},
+  {id:11,nome:"DYANA KATARINA S. ANDRADE",situacao:"Membro",grupo:"Grupo 1",categoria:"Adulto",sexo:"F"},
+  {id:12,nome:"EDNALDO FRANCISCO DE OLIVEIRA",situacao:"Visitante Frequente",grupo:"Grupo 1",categoria:"Adulto",sexo:"M"},
+  {id:13,nome:"ELAINE GONÇALVES C. SILVA",situacao:"Membro",grupo:"Grupo 2",categoria:"Adulto",sexo:"F"},
+  {id:14,nome:"ESTEFANO CONCEIÇÃO DE ANDRADE",situacao:"Membro",grupo:"Grupo 1",categoria:"Adulto",sexo:"M"},
+  {id:15,nome:"ESTEVÃO CONCEIÇÃO DE ANDRADE",situacao:"Membro",grupo:"Grupo 3",categoria:"Adulto",sexo:"M"},
+  {id:16,nome:"ESTHER FAJOLI PRUSS",situacao:"Membro",grupo:"Grupo 3",categoria:"Adulto",sexo:"F"},
+  {id:17,nome:"FLÁVIA MARTINS BRAGA MARVILA",situacao:"Membro",grupo:"Grupo 1",categoria:"Adulto",sexo:"M"},
+  {id:18,nome:"GILSIONE FRANÇA RODRIGUES",situacao:"Membro",grupo:"Grupo 2",categoria:"Adulto",sexo:"M"},
+  {id:19,nome:"GUILHERME LIMA DE CAMPOS",situacao:"Membro",grupo:"Grupo 2",categoria:"Jovem",sexo:"M"},
+  {id:20,nome:"HILDA MARIA DIAS DA CAMARA",situacao:"Membro",grupo:"Grupo 1",categoria:"Adulto",sexo:"F"},
+  {id:21,nome:"HILDA SILVARES O. RODRIGUES",situacao:"Membro",grupo:"Grupo 1",categoria:"Adulto",sexo:"F"},
+  {id:22,nome:"ILMA GONÇALVES CRUZ",situacao:"Membro",grupo:"Grupo 1",categoria:"Adulto",sexo:"F"},
+  {id:23,nome:"ISABEL CRISTINA P. M. REIS",situacao:"Membro",grupo:"Grupo 3",categoria:"Adulto",sexo:"F"},
+  {id:24,nome:"ISABELE CATANHO PINTO ALMEIDA",situacao:"Visitante",grupo:"Grupo 2",categoria:"Jovem",sexo:"F"},
+  {id:25,nome:"ISAC FIGUEIREDO BARBOSA",situacao:"Membro",grupo:"Grupo 3",categoria:"Adulto",sexo:"M"},
+  {id:26,nome:"IVONE DA SILVA DE SOUZA",situacao:"Membro",grupo:"Grupo 2",categoria:"Adulto",sexo:"F"},
+  {id:27,nome:"JOANA MARIA S. RIBEIRO",situacao:"Visitante",grupo:"Grupo 3",categoria:"Adulto",sexo:"M"},
+  {id:28,nome:"JOSÉ CARLOS O. SACRAMENTO",situacao:"Visitante",grupo:"Grupo 1",categoria:"Adulto",sexo:"M"},
+  {id:29,nome:"JOÃO BATISTA RODRIGUES",situacao:"Membro",grupo:"Grupo 1",categoria:"Adulto",sexo:"M"},
+  {id:30,nome:"JÉSSICA SANTOS DE SOUZA",situacao:"Visitante",grupo:"Grupo 1",categoria:"Adulto",sexo:"F"},
+  {id:31,nome:"JÔNATAS FRANCISQUINI BENTO",situacao:"Membro",grupo:"Grupo 3",categoria:"Adulto",sexo:"M"},
+  {id:32,nome:"JÚLIA DA CONCEIÇÃO CORRÊA",situacao:"Membro não batizado",grupo:"Grupo 1",categoria:"Criança(Pequeno) 3-7",sexo:"F"},
+  {id:33,nome:"LEANDRO SANTANNA EVANGELISTA",situacao:"Visitante",grupo:"Grupo 1",categoria:"Adulto",sexo:"M"},
+  {id:34,nome:"LOURDES MARIA G. O. OLIVEIRA",situacao:"Membro",grupo:"Grupo 1",categoria:"Adulto",sexo:"F"},
+  {id:35,nome:"LUCAS DO NASCIMENTO CORRÊA",situacao:"Visitante",grupo:"Grupo 1",categoria:"Adulto",sexo:"M"},
+  {id:36,nome:"LÍDIA CASTRO DOS SANTOS",situacao:"Membro",grupo:"Grupo 1",categoria:"Adulto",sexo:"F"},
+  {id:37,nome:"MARCELO SEIXAS CABOI",situacao:"Membro",grupo:"Grupo 3",categoria:"Adulto",sexo:"M"},
+  {id:38,nome:"MARIA APARECIDA F. ARAÚJO",situacao:"Visitante",grupo:"Grupo 1",categoria:"Adulto",sexo:"F"},
+  {id:39,nome:"MARIA CLÁUDIA CLEMENTE CABOI",situacao:"Membro",grupo:"Grupo 3",categoria:"Adulto",sexo:"F"},
+  {id:40,nome:"MARIA G. N. PAES",situacao:"Membro",grupo:"Grupo 2",categoria:"Adulto",sexo:"F"},
+  {id:41,nome:"MARIA L. C. ANDRADE",situacao:"Membro",grupo:"Grupo 2",categoria:"Adulto",sexo:"F"},
+  {id:42,nome:"MARLUCE LIMA DE CAMPOS",situacao:"Membro",grupo:"Grupo 2",categoria:"Adulto",sexo:"F"},
+  {id:43,nome:"NECY RODRIGUES SEIXAS CABOI",situacao:"Membro",grupo:"Grupo 3",categoria:"Adulto",sexo:"F"},
+  {id:44,nome:"NEIVA MARIA ROCHA DA SILVA",situacao:"Membro",grupo:"Grupo 1",categoria:"Adulto",sexo:"F"},
+  {id:45,nome:"NEUZA MORAIS DE OLIVEIRA",situacao:"Membro",grupo:"Grupo 3",categoria:"Adulto",sexo:"F"},
+  {id:46,nome:"NOEMI DA CONCEIÇÃO DA SILVA",situacao:"Membro",grupo:"Grupo 1",categoria:"Adulto",sexo:"F"},
+  {id:47,nome:"ORION RIBEIRO DE CAMPOS",situacao:"Visitante",grupo:"Grupo 2",categoria:"Adulto",sexo:"M"},
+  {id:48,nome:"ORLANDO JOSÉ DA SILVA",situacao:"Membro",grupo:"Grupo 1",categoria:"Adulto",sexo:"M"},
+  {id:49,nome:"PEDRO ERNESTO DE SOUZA",situacao:"Membro",grupo:"Grupo 2",categoria:"Adulto",sexo:"M"},
+  {id:50,nome:"PRISCILA C. SILVA",situacao:"Membro",grupo:"Grupo 1",categoria:"Adulto",sexo:"F"},
+  {id:51,nome:"RAMON OLIVEIRA DE ANDRADE",situacao:"Membro",grupo:"Grupo 2",categoria:"Adulto",sexo:"M"},
+  {id:52,nome:"RODRIGO DA CONCEIÇÃO DA SILVA",situacao:"Membro",grupo:"Grupo 3",categoria:"Adulto",sexo:"M"},
+  {id:53,nome:"ROSANA LESSA A. MEDEIROS",situacao:"Membro",grupo:"Grupo 2",categoria:"Adulto",sexo:"F"},
+  {id:54,nome:"ROSANE MARIA DA SILVA",situacao:"Membro",grupo:"Grupo 1",categoria:"Adulto",sexo:"F"},
+  {id:55,nome:"SANILÚ DA SILVA FONTES",situacao:"Membro",grupo:"Grupo 3",categoria:"Adulto",sexo:"F"},
+  {id:56,nome:"SARA VITÓRIA P. M. C. ANDRADE",situacao:"Membro",grupo:"Grupo 3",categoria:"Adulto",sexo:"F"},
+  {id:57,nome:"SEBASTIÃO PAES",situacao:"Membro",grupo:"Grupo 2",categoria:"Adulto",sexo:"M"},
+  {id:58,nome:"SILVANA MOTA FERREIRA",situacao:"Membro",grupo:"Grupo 3",categoria:"Adulto",sexo:"F"},
+  {id:59,nome:"VANDERLEI MELO RIBEIRO",situacao:"Visitante",grupo:"Grupo 3",categoria:"Adulto",sexo:"M"},
+  {id:60,nome:"VANESSA CATANHO P. ALMEIDA",situacao:"Membro",grupo:"Grupo 2",categoria:"Adulto",sexo:"F"}
+];
+
+// ============ ESTADO ============
+let pessoas = [];
+let eventos = [];
+let eventoAtual = null;
+let presencas = {}; // {eventoId: {pessoaId: true/false}}
+
+// ============ INICIALIZAÇÃO ============
+async function init() {
+  try {
+    if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "SUA_API_KEY") {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+      useFirebase = true;
+      document.getElementById('firebaseStatus').innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Firebase Conectado';
+      await carregarDados();
+    } else {
+      document.getElementById('firebaseStatus').innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span> Modo Local';
+      carregarDadosLocais();
+    }
+  } catch (e) {
+    console.error('Erro Firebase:', e);
+    document.getElementById('firebaseStatus').innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span> Modo Local';
+    carregarDadosLocais();
+  }
+  renderAll();
+  lucide.createIcons();
+}
+
+function carregarDadosLocais() {
+  pessoas = JSON.parse(localStorage.getItem('pessoas') || 'null') || dadosIniciais;
+  eventos = JSON.parse(localStorage.getItem('eventos') || '[]');
+  presencas = JSON.parse(localStorage.getItem('presencas') || '{}');
+  eventoAtual = localStorage.getItem('eventoAtual') || null;
+  salvarLocal();
+}
+
+function salvarLocal() {
+  localStorage.setItem('pessoas', JSON.stringify(pessoas));
+  localStorage.setItem('eventos', JSON.stringify(eventos));
+  localStorage.setItem('presencas', JSON.stringify(presencas));
+  if (eventoAtual) localStorage.setItem('eventoAtual', eventoAtual);
+}
+
+async function carregarDados() {
+  try {
+    const pSnap = await db.collection('pessoas').get();
+    if (pSnap.empty) {
+      // Primeira vez - popular com dados iniciais
+      for (const p of dadosIniciais) {
+        await db.collection('pessoas').doc(String(p.id)).set(p);
+      }
+      pessoas = dadosIniciais;
+    } else {
+      pessoas = pSnap.docs.map(d => ({id: parseInt(d.id), ...d.data()}));
+    }
+    
+    const eSnap = await db.collection('eventos').get();
+    eventos = eSnap.docs.map(d => ({id: d.id, ...d.data()}));
+    
+    const prSnap = await db.collection('presencas').get();
+    presencas = {};
+    prSnap.docs.forEach(d => {
+      presencas[d.id] = d.data();
+    });
+    
+    eventoAtual = localStorage.getItem('eventoAtual') || (eventos.length ? eventos[0].id : null);
+  } catch (e) {
+    console.error(e);
+    carregarDadosLocais();
+  }
+}
+
+async function salvarPessoaFirestore(p) {
+  if (!useFirebase) return;
+  await db.collection('pessoas').doc(String(p.id)).set(p);
+}
+
+async function salvarEventoFirestore(e) {
+  if (!useFirebase) return;
+  if (e.id) {
+    await db.collection('eventos').doc(e.id).set(e);
+  } else {
+    const ref = await db.collection('eventos').add(e);
+    e.id = ref.id;
+  }
+}
+
+async function salvarPresencaFirestore() {
+  if (!useFirebase || !eventoAtual) return;
+  await db.collection('presencas').doc(eventoAtual).set(presencas[eventoAtual] || {});
+}
+
+// ============ EVENTOS ============
+function openEventModal() {
+  document.getElementById('eventModal').classList.remove('hidden');
+  document.getElementById('eventoData').valueAsDate = new Date();
+}
+
+function closeEventModal() {
+  document.getElementById('eventModal').classList.add('hidden');
+  document.getElementById('formEvento').reset();
+}
+
+document.getElementById('formEvento').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const novo = {
+    nome: document.getElementById('eventoNome').value,
+    data: document.getElementById('eventoData').value,
+    descricao: document.getElementById('eventoDesc').value,
+    criadoEm: new Date().toISOString()
+  };
+  
+  if (useFirebase) {
+    const ref = await db.collection('eventos').add(novo);
+    novo.id = ref.id;
+  } else {
+    novo.id = 'evt_' + Date.now();
+  }
+  
+  eventos.unshift(novo);
+  eventoAtual = novo.id;
+  presencas[eventoAtual] = {};
+  
+  if (!useFirebase) salvarLocal();
+  else await salvarEventoFirestore(novo);
+  
+  closeEventModal();
+  renderAll();
+  showToast('Evento criado com sucesso!');
+});
+
+document.getElementById('eventSelect').addEventListener('change', (e) => {
+  eventoAtual = e.target.value || null;
+  if (!useFirebase) salvarLocal();
+  else localStorage.setItem('eventoAtual', eventoAtual);
+  renderAll();
+});
+
+// ============ PRESENÇA ============
+function togglePresenca(pessoaId) {
+  if (!eventoAtual) {
+    showToast('Selecione um evento primeiro!', 'error');
+    return;
+  }
+  if (!presencas[eventoAtual]) presencas[eventoAtual] = {};
+  presencas[eventoAtual][pessoaId] = !presencas[eventoAtual][pessoaId];
+  if (!useFirebase) salvarLocal();
+  else salvarPresencaFirestore();
+  renderAll();
+}
+
+function isPresente(pessoaId) {
+  return eventoAtual && presencas[eventoAtual] && presencas[eventoAtual][pessoaId];
+}
+
+// ============ NOVO VISITANTE ============
+document.getElementById('formNovoVisitante').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const novoId = Math.max(...pessoas.map(p => p.id), 0) + 1;
+  const novaPessoa = {
+    id: novoId,
+    nome: document.getElementById('novoNome').value.toUpperCase(),
+    sexo: document.getElementById('novoSexo').value,
+    categoria: document.getElementById('novoCategoria').value,
+    grupo: document.getElementById('novoGrupo').value,
+    situacao: document.getElementById('novoSituacao').value
+  };
+  pessoas.push(novaPessoa);
+  if (useFirebase) await salvarPessoaFirestore(novaPessoa);
+  else salvarLocal();
+  document.getElementById('formNovoVisitante').reset();
+  renderAll();
+  showToast('Visitante cadastrado!');
+});
+
+// ============ RENDERIZAÇÃO ============
+function renderAll() {
+  renderEventos();
+  renderList();
+  renderStats();
+}
+
+function renderEventos() {
+  const select = document.getElementById('eventSelect');
+  select.innerHTML = '<option value="">Selecione um evento...</option>' + 
+    eventos.map(e => `<option value="${e.id}" ${e.id === eventoAtual ? 'selected' : ''}>${e.nome} - ${formatDate(e.data)}</option>`).join('');
+  
+  const evt = eventos.find(e => e.id === eventoAtual);
+  document.getElementById('currentEventName').textContent = evt 
+    ? `${evt.nome} • ${formatDate(evt.data)}` 
+    : 'Nenhum evento selecionado';
+}
+
+function renderStats() {
+  const membros = pessoas.filter(p => p.situacao === 'Membro' || p.situacao === 'Membro não batizado');
+  const visitantes = pessoas.filter(p => p.situacao === 'Visitante' || p.situacao === 'Visitante Frequente');
+  const criancas = pessoas.filter(p => p.categoria.includes('Criança') || p.categoria === 'Adolescente');
+  
+  const presentes = eventoAtual && presencas[eventoAtual] ? Object.keys(presencas[eventoAtual]).filter(k => presencas[eventoAtual][k]) : [];
+  const presentesObj = pessoas.filter(p => presentes.includes(String(p.id)));
+  
+  document.getElementById('statMembros').textContent = membros.length;
+  document.getElementById('statMembrosPresentes').textContent = `${presentesObj.filter(p => p.situacao === 'Membro' || p.situacao === 'Membro não batizado').length} presentes`;
+  
+  document.getElementById('statVisitantes').textContent = visitantes.length;
+  document.getElementById('statVisitantesPresentes').textContent = `${presentesObj.filter(p => p.situacao === 'Visitante' || p.situacao === 'Visitante Frequente').length} presentes`;
+  
+  document.getElementById('statCriancas').textContent = criancas.length;
+  document.getElementById('statCriancasPresentes').textContent = `${presentesObj.filter(p => p.categoria.includes('Criança') || p.categoria === 'Adolescente').length} presentes`;
+  
+  document.getElementById('statTotal').textContent = presentes.length;
+  const percent = pessoas.length ? Math.round((presentes.length / pessoas.length) * 100) : 0;
+  document.getElementById('statPercent').textContent = `${percent}% de presença`;
+}
+
+function renderList() {
+  const tab = document.querySelector('.tab-btn.tab-active')?.dataset.tab || 'membros';
+  
+  if (tab === 'membros') renderMembros();
+  else if (tab === 'visitantes') renderVisitantes();
+  else if (tab === 'criancas') renderCriancas();
+}
+
+function renderMembros() {
+  const search = (document.getElementById('searchMembros')?.value || '').toLowerCase();
+  const grupo = document.getElementById('filterGrupoMembros')?.value || '';
+  
+  const lista = pessoas.filter(p => {
+    const isMembro = p.situacao === 'Membro' || p.situacao === 'Membro não batizado';
+    const isAdultoJovem = p.categoria === 'Adulto' || p.categoria === 'Jovem';
+    const matchSearch = p.nome.toLowerCase().includes(search);
+    const matchGrupo = !grupo || p.grupo === grupo;
+    return isMembro && isAdultoJovem && matchSearch && matchGrupo;
+  }).sort((a,b) => a.nome.localeCompare(b.nome));
+  
+  document.getElementById('listMembros').innerHTML = lista.length === 0 
+    ? '<p class="text-slate-500 text-sm col-span-full text-center py-8">Nenhum membro encontrado</p>'
+    : lista.map(p => cardPessoa(p)).join('');
+  lucide.createIcons();
+}
+
+function renderVisitantes() {
+  const search = (document.getElementById('searchVisitantes')?.value || '').toLowerCase();
+  
+  const lista = pessoas.filter(p => {
+    const isVisitante = p.situacao === 'Visitante' || p.situacao === 'Visitante Frequente';
+    const matchSearch = p.nome.toLowerCase().includes(search);
+    return isVisitante && matchSearch;
+  }).sort((a,b) => a.nome.localeCompare(b.nome));
+  
+  document.getElementById('listVisitantes').innerHTML = lista.length === 0
+    ? '<p class="text-slate-500 text-sm col-span-full text-center py-8">Nenhum visitante encontrado</p>'
+    : lista.map(p => cardPessoa(p)).join('');
+  lucide.createIcons();
+}
+
+function renderCriancas() {
+  const classes = [
+    {nome: 'Crianças (Pequeno) 3-7 anos', icon: 'baby', cor: 'pink', key: 'Criança(Pequeno) 3-7'},
+    {nome: 'Crianças (Intermediário) 7-11 anos', icon: 'smile', cor: 'purple', key: 'Criança(Intermediário) 7-11'},
+    {nome: 'Adolescentes', icon: 'sparkles', cor: 'blue', key: 'Adolescente'}
+  ];
+  
+  const html = classes.map(cl => {
+    const lista = pessoas.filter(p => p.categoria === cl.key).sort((a,b) => a.nome.localeCompare(b.nome));
+    const presentes = lista.filter(p => isPresente(p.id)).length;
+    return `
+      <div class="mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <div class="w-9 h-9 rounded-lg bg-${cl.cor}-100 flex items-center justify-center">
+              <i data-lucide="${cl.icon}" class="w-4 h-4 text-${cl.cor}-600"></i>
+            </div>
+            <div>
+              <h4 class="font-display font-bold text-slate-800">${cl.nome}</h4>
+              <p class="text-xs text-slate-500">${lista.length} pessoas • ${presentes} presentes</p>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          ${lista.length === 0 ? '<p class="text-slate-500 text-sm col-span-full text-center py-4">Nenhum aluno nesta classe</p>' : lista.map(p => cardPessoa(p)).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  document.getElementById('listCriancas').innerHTML = html;
+  lucide.createIcons();
+}
+
+function cardPessoa(p) {
+  const presente = isPresente(p.id);
+  const corSituacao = p.situacao === 'Membro' ? 'indigo' : 
+                      p.situacao === 'Membro não batizado' ? 'amber' : 
+                      p.situacao === 'Visitante Frequente' ? 'emerald' : 'sky';
+  return `
+    <div class="card-hover bg-white rounded-xl p-4 border border-slate-200/60 flex items-center gap-3">
+      <div onclick="togglePresenca(${p.id})" class="checkbox-custom ${presente ? 'checked' : ''}" title="Confirmar presença"></div>
+      <div class="flex-1 min-w-0">
+        <p class="font-semibold text-slate-800 text-sm truncate">${p.nome}</p>
+        <div class="flex flex-wrap gap-1 mt-1">
+          <span class="badge bg-${corSituacao}-100 text-${corSituacao}-700">${p.situacao}</span>
+          ${p.grupo ? `<span class="badge bg-slate-100 text-slate-600">${p.grupo}</span>` : ''}
+        </div>
+      </div>
+      <div class="text-right">
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
+          ${p.sexo}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ============ TABS ============
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.remove('tab-active');
+    b.classList.add('text-slate-600', 'hover:bg-slate-100');
+  });
+  const btn = document.querySelector(`[data-tab="${tab}"]`);
+  btn.classList.add('tab-active');
+  btn.classList.remove('text-slate-600', 'hover:bg-slate-100');
+  
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+  document.getElementById('tab-' + tab).classList.remove('hidden');
+  renderList();
+}
+
+// ============ RELATÓRIO ============
+function getFilteredPeople() {
+  const checks = Array.from(document.querySelectorAll('#tab-relatorio input[type="checkbox"][value]')).filter(c => c.checked).map(c => c.value);
+  const apenasPresentes = checks.includes('presentes');
+  
+  let lista = [];
+  if (checks.includes('membros')) lista.push(...pessoas.filter(p => p.situacao === 'Membro' || p.situacao === 'Membro não batizado'));
+  if (checks.includes('visitantes')) lista.push(...pessoas.filter(p => p.situacao === 'Visitante' || p.situacao === 'Visitante Frequente'));
+  if (checks.includes('criancas')) lista.push(...pessoas.filter(p => p.categoria.includes('Criança') || p.categoria === 'Adolescente'));
+  
+  // Remove duplicatas
+  lista = [...new Map(lista.map(p => [p.id, p])).values()];
+  
+  if (apenasPresentes) lista = lista.filter(p => isPresente(p.id));
+  
+  return lista.sort((a,b) => a.nome.localeCompare(b.nome));
+}
+
+function buildReportHTML() {
+  const evt = eventos.find(e => e.id === eventoAtual);
+  const lista = getFilteredPeople();
+  const presentes = lista.filter(p => isPresente(p.id)).length;
+  const ausentes = lista.length - presentes;
+  
+  return `
+    <div class="report-container" id="reportContent">
+      <div class="report-header">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <h1 style="font-size:28px;font-weight:800;color:#1e293b;margin:0;">Igreja Hinterland</h1>
+            <p style="color:#6366f1;font-weight:600;margin:4px 0 0 0;font-size:14px;">Controle de Presença</p>
+          </div>
+          <div style="text-align:right;">
+            <div style="width:60px;height:60px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;margin-left:auto;">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Z"/><path d="M12 12v6"/><path d="m9 9 3-3 3 3"/></svg>
+            </div>
+          </div>
+        </div>
+        ${evt ? `
+          <div style="margin-top:20px;padding:16px;background:linear-gradient(135deg,#f5f3ff,#eff6ff);border-radius:12px;border-left:4px solid #6366f1;">
+            <p style="margin:0;font-size:12px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Evento</p>
+            <p style="margin:4px 0 0 0;font-size:20px;font-weight:700;color:#1e293b;">${evt.nome}</p>
+            <p style="margin:4px 0 0 0;font-size:13px;color:#64748b;">${formatDate(evt.data)}${evt.descricao ? ' • ' + evt.descricao : ''}</p>
+          </div>
+        ` : ''}
+      </div>
+      
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
+        <div style="padding:14px;background:#f8fafc;border-radius:10px;text-align:center;">
+          <p style="margin:0;font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;">Total</p>
+          <p style="margin:4px 0 0 0;font-size:24px;font-weight:800;color:#1e293b;">${lista.length}</p>
+        </div>
+        <div style="padding:14px;background:#f0fdf4;border-radius:10px;text-align:center;">
+          <p style="margin:0;font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;">Presentes</p>
+          <p style="margin:4px 0 0 0;font-size:24px;font-weight:800;color:#10b981;">${presentes}</p>
+        </div>
+        <div style="padding:14px;background:#fef2f2;border-radius:10px;text-align:center;">
+          <p style="margin:0;font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;">Ausentes</p>
+          <p style="margin:4px 0 0 0;font-size:24px;font-weight:800;color:#ef4444;">${ausentes}</p>
+        </div>
+        <div style="padding:14px;background:#eff6ff;border-radius:10px;text-align:center;">
+          <p style="margin:0;font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;">Presença</p>
+          <p style="margin:4px 0 0 0;font-size:24px;font-weight:800;color:#3b82f6;">${lista.length ? Math.round(presentes/lista.length*100) : 0}%</p>
+        </div>
+      </div>
+      
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th style="width:40px;">#</th>
+            <th>Nome</th>
+            <th style="width:150px;">Situação</th>
+            <th style="width:100px;">Categoria</th>
+            <th style="width:90px;">Grupo</th>
+            <th style="width:80px;text-align:center;">Presença</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${lista.map((p, i) => `
+            <tr>
+              <td style="color:#94a3b8;font-weight:600;">${i+1}</td>
+              <td style="font-weight:600;">${p.nome}</td>
+              <td>${p.situacao}</td>
+              <td>${p.categoria}</td>
+              <td>${p.grupo || '-'}</td>
+              <td style="text-align:center;" class="${isPresente(p.id) ? 'present' : 'absent'}">
+                ${isPresente(p.id) ? '✓ Presente' : '✗ Ausente'}
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      
+      <div style="margin-top:30px;padding-top:20px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#94a3b8;">
+        <p style="margin:0;">Relatório gerado em ${new Date().toLocaleString('pt-BR')}</p>
+        <p style="margin:0;">Igreja Hinterland • Sistema de Presença</p>
+      </div>
+    </div>
+  `;
+}
+
+function previewRelatorio() {
+  if (!eventoAtual) {
+    showToast('Selecione um evento primeiro!', 'error');
+    return;
+  }
+  const area = document.getElementById('previewArea');
+  area.classList.remove('hidden');
+  document.getElementById('reportPreview').innerHTML = buildReportHTML();
+}
+
+async function gerarRelatorio() {
+  if (!eventoAtual) {
+    showToast('Selecione um evento primeiro!', 'error');
+    return;
+  }
+  
+  const formato = document.querySelector('input[name="formato"]:checked').value;
+  const evt = eventos.find(e => e.id === eventoAtual);
+  const nomeArquivo = `presenca_${(evt?.nome || 'evento').replace(/\s+/g,'_')}_${evt?.data || ''}`;
+  
+  showToast('Gerando relatório...');
+  
+  // Criar elemento temporário
+  const temp = document.createElement('div');
+  temp.style.position = 'fixed';
+  temp.style.left = '-9999px';
+  temp.style.top = '0';
+  temp.innerHTML = buildReportHTML();
+  document.body.appendChild(temp);
+  
+  const content = temp.querySelector('#reportContent');
+  
+  try {
+    const canvas = await html2canvas(content, {
+      scale: 2,
+      backgroundColor: '#ffffff',
+      useCORS: true
+    });
+    
+    if (formato === 'imagem') {
+      const link = document.createElement('a');
+      link.download = nomeArquivo + '.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showToast('Imagem gerada com sucesso!');
+    } else {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth - 20;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      let heightLeft = imgHeight;
+      let position = 10;
+      
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, position, imgWidth, imgHeight);
+      heightLeft -= (pageHeight - 20);
+      
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight + 10;
+        pdf.addPage();
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, position, imgWidth, imgHeight);
+        heightLeft -= (pageHeight - 20);
+      }
+      
+      pdf.save(nomeArquivo + '.pdf');
+      showToast('PDF gerado com sucesso!');
+    }
+  } catch (e) {
+    console.error(e);
+    showToast('Erro ao gerar relatório', 'error');
+  } finally {
+    document.body.removeChild(temp);
+  }
+}
+
+// ============ UTILITÁRIOS ============
+function formatDate(d) {
+  if (!d) return '';
+  const [y, m, day] = d.split('-');
+  return `${day}/${m}/${y}`;
+}
+
+function showToast(msg, type = 'success') {
+  const toast = document.getElementById('toast');
+  const icon = document.getElementById('toastIcon');
+  const text = document.getElementById('toastMsg');
+  text.textContent = msg;
+  if (type === 'error') {
+    icon.className = 'w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center';
+    icon.innerHTML = '<i data-lucide="x-circle" class="w-4 h-4 text-red-600"></i>';
+  } else {
+    icon.className = 'w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center';
+    icon.innerHTML = '<i data-lucide="check" class="w-4 h-4 text-emerald-600"></i>';
+  }
+  toast.classList.remove('hidden');
+  lucide.createIcons();
+  setTimeout(() => toast.classList.add('hidden'), 3000);
+}
+
+// Inicializar
+init();
+</script>
+
+</body>
+</html>
+
