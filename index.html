@@ -288,6 +288,9 @@
       <button onclick="switchTab('visitantes')" data-tab="visitantes" class="tab-btn px-5 py-2.5 rounded-xl font-semibold text-sm text-slate-600 hover:bg-slate-100 transition-all">
         <i data-lucide="user-plus" class="w-4 h-4 inline mr-1"></i> Visitantes
       </button>
+      <button onclick="switchTab('visitantesCulto')" data-tab="visitantesCulto" class="tab-btn px-5 py-2.5 rounded-xl font-semibold text-sm text-slate-600 hover:bg-slate-100 transition-all">
+        <i data-lucide="door-open" class="w-4 h-4 inline mr-1"></i> Visitante do Culto
+      </button>
       <button onclick="switchTab('criancas')" data-tab="criancas" class="tab-btn px-5 py-2.5 rounded-xl font-semibold text-sm text-slate-600 hover:bg-slate-100 transition-all">
         <i data-lucide="baby" class="w-4 h-4 inline mr-1"></i> Crianças e Adolescentes
       </button>
@@ -295,7 +298,7 @@
         <i data-lucide="user-plus-2" class="w-4 h-4 inline mr-1"></i> Novo Cadastro
       </button>
       <button onclick="switchTab('culto')" data-tab="culto" class="tab-btn px-5 py-2.5 rounded-xl font-semibold text-sm text-slate-600 hover:bg-slate-100 transition-all">
-        <i data-lucide="door-open" class="w-4 h-4 inline mr-1"></i> Visitante do Culto
+        <i data-lucide="door-open" class="w-4 h-4 inline mr-1"></i> Cadastro Visitante do Culto
       </button>
       <button onclick="switchTab('relatorio')" data-tab="relatorio" class="tab-btn px-5 py-2.5 rounded-xl font-semibold text-sm text-slate-600 hover:bg-slate-100 transition-all">
         <i data-lucide="file-text" class="w-4 h-4 inline mr-1"></i> Relatório
@@ -335,6 +338,17 @@
           <input id="searchVisitantes" type="text" placeholder="Buscar..." class="input-field max-w-xs" oninput="renderList()">
         </div>
         <div id="listVisitantes" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+      </div>
+
+      <div id="tab-visitantesCulto" class="tab-content hidden">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+          <div>
+            <h3 class="font-display text-lg font-bold text-slate-800">Visitantes do Culto</h3>
+            <p class="text-sm text-slate-500">Pessoas cadastradas rapidamente durante um culto/evento</p>
+          </div>
+          <input id="searchVisitantesCulto" type="text" placeholder="Buscar..." class="input-field max-w-xs" oninput="renderList()">
+        </div>
+        <div id="listVisitantesCulto" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
       </div>
 
       <div id="tab-criancas" class="tab-content hidden">
@@ -1126,6 +1140,7 @@ function renderList() {
   
   if (tab === 'membros') renderMembros();
   else if (tab === 'visitantes') renderVisitantes();
+  else if (tab === 'visitantesCulto') renderVisitantesCulto();
   else if (tab === 'criancas') renderCriancas();
 }
 
@@ -1149,15 +1164,29 @@ function renderMembros() {
 
 function renderVisitantes() {
   const search = (document.getElementById('searchVisitantes')?.value || '').toLowerCase();
-  
+
   const lista = pessoas.filter(p => {
     const isVisitante = p.situacao === 'Visitante' || p.situacao === 'Visitante Frequente';
     const matchSearch = p.nome.toLowerCase().includes(search);
-    return isVisitante && matchSearch;
+    return isVisitante && !p.origemCulto && matchSearch;
   }).sort((a,b) => a.nome.localeCompare(b.nome));
-  
+
   document.getElementById('listVisitantes').innerHTML = lista.length === 0
     ? '<p class="text-slate-500 text-sm col-span-full text-center py-8">Nenhum visitante encontrado</p>'
+    : lista.map(p => cardPessoa(p)).join('');
+  lucide.createIcons();
+}
+
+function renderVisitantesCulto() {
+  const search = (document.getElementById('searchVisitantesCulto')?.value || '').toLowerCase();
+
+  const lista = pessoas.filter(p => {
+    const matchSearch = p.nome.toLowerCase().includes(search);
+    return p.origemCulto && matchSearch;
+  }).sort((a,b) => a.nome.localeCompare(b.nome));
+
+  document.getElementById('listVisitantesCulto').innerHTML = lista.length === 0
+    ? '<p class="text-slate-500 text-sm col-span-full text-center py-8">Nenhum visitante do culto encontrado</p>'
     : lista.map(p => cardPessoa(p)).join('');
   lucide.createIcons();
 }
