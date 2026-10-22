@@ -230,6 +230,14 @@
             <i data-lucide="plus" class="w-4 h-4"></i>
             Novo Evento
           </button>
+          <button onclick="abrirEdicaoEvento()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-3 rounded-xl font-semibold text-sm flex items-center gap-2" title="Editar evento selecionado">
+            <i data-lucide="pencil" class="w-4 h-4"></i>
+            Editar
+          </button>
+          <button onclick="excluirEvento()" class="bg-red-50 hover:bg-red-100 text-red-600 px-5 py-3 rounded-xl font-semibold text-sm flex items-center gap-2" title="Excluir evento selecionado">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+            Excluir Evento
+          </button>
         </div>
       </div>
     </div>
@@ -564,12 +572,13 @@
 <div id="eventModal" class="modal-overlay hidden">
   <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
     <div class="flex items-center justify-between mb-4">
-      <h3 class="font-display text-lg font-bold text-slate-800">Novo Evento</h3>
+      <h3 id="eventModalTitulo" class="font-display text-lg font-bold text-slate-800">Novo Evento</h3>
       <button onclick="closeEventModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center">
         <i data-lucide="x" class="w-4 h-4"></i>
       </button>
     </div>
     <form id="formEvento" class="space-y-4">
+      <input type="hidden" id="eventoEditId">
       <div>
         <label class="block text-sm font-semibold text-slate-700 mb-2">Nome do Evento *</label>
         <input type="text" id="eventoNome" class="input-field" placeholder="Ex: Culto de Domingo" required>
@@ -583,7 +592,7 @@
         <textarea id="eventoDesc" class="input-field" rows="3" placeholder="Detalhes do evento..."></textarea>
       </div>
       <div class="flex gap-2 pt-2">
-        <button type="submit" class="btn-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm flex-1">Criar Evento</button>
+        <button id="eventModalSubmitBtn" type="submit" class="btn-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm flex-1">Criar Evento</button>
         <button type="button" onclick="closeEventModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-semibold text-sm">Cancelar</button>
       </div>
     </form>
@@ -884,8 +893,27 @@ async function salvarPresencaFirestore() {
 
 // ============ EVENTOS ============
 function openEventModal() {
+  document.getElementById('eventModalTitulo').textContent = 'Novo Evento';
+  document.getElementById('eventModalSubmitBtn').textContent = 'Criar Evento';
+  document.getElementById('eventoEditId').value = '';
   document.getElementById('eventModal').classList.remove('hidden');
   document.getElementById('eventoData').valueAsDate = new Date();
+}
+
+function abrirEdicaoEvento() {
+  if (!eventoAtual) {
+    showToast('Selecione um evento primeiro!', 'error');
+    return;
+  }
+  const evt = eventos.find(e => e.id === eventoAtual);
+  if (!evt) return;
+  document.getElementById('eventModalTitulo').textContent = 'Editar Evento';
+  document.getElementById('eventModalSubmitBtn').textContent = 'Salvar Alterações';
+  document.getElementById('eventoEditId').value = evt.id;
+  document.getElementById('eventoNome').value = evt.nome || '';
+  document.getElementById('eventoData').value = evt.data || '';
+  document.getElementById('eventoDesc').value = evt.descricao || '';
+  document.getElementById('eventModal').classList.remove('hidden');
 }
 
 function closeEventModal() {
@@ -895,31 +923,70 @@ function closeEventModal() {
 
 document.getElementById('formEvento').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const novo = {
+  const editId = document.getElementById('eventoEditId').value;
+  const dados = {
     nome: document.getElementById('eventoNome').value,
     data: document.getElementById('eventoData').value,
-    descricao: document.getElementById('eventoDesc').value,
-    criadoEm: new Date().toISOString()
+    descricao: document.getElementById('eventoDesc').value
   };
-  
+
+  if (editId) {
+    const evt = eventos.find(e => e.id === editId);
+    if (!evt) return;
+    Object.assign(evt, dados);
+    if (useFirebase) await salvarEventoFirestore(evt);
+    else salvarLocal();
+    closeEventModal();
+    renderAll();
+    showToast('Evento atualizado com sucesso!');
+    return;
+  }
+
+  const novo = { ...dados, criadoEm: new Date().toISOString() };
+
   if (useFirebase) {
     const ref = await db.collection('eventos').add(novo);
     novo.id = ref.id;
   } else {
     novo.id = 'evt_' + Date.now();
   }
-  
+
   eventos.unshift(novo);
   eventoAtual = novo.id;
   presencas[eventoAtual] = {};
-  
+
   if (!useFirebase) salvarLocal();
   else await salvarEventoFirestore(novo);
-  
+
   closeEventModal();
   renderAll();
   showToast('Evento criado com sucesso!');
 });
+
+async function excluirEvento() {
+  if (!eventoAtual) {
+    showToast('Selecione um evento primeiro!', 'error');
+    return;
+  }
+  const evt = eventos.find(e => e.id === eventoAtual);
+  if (!evt) return;
+  if (!confirm(`Excluir o evento "${evt.nome}" e todos os registros de presença dele? Essa ação não pode ser desfeita.`)) return;
+
+  const idExcluido = eventoAtual;
+  eventos = eventos.filter(e => e.id !== idExcluido);
+  delete presencas[idExcluido];
+  eventoAtual = eventos.length ? eventos[0].id : null;
+
+  if (useFirebase) {
+    await db.collection('eventos').doc(idExcluido).delete();
+    await db.collection('presencas').doc(idExcluido).delete();
+  } else {
+    salvarLocal();
+  }
+
+  renderAll();
+  showToast('Evento excluído!');
+}
 
 document.getElementById('eventSelect').addEventListener('change', (e) => {
   eventoAtual = e.target.value || null;
